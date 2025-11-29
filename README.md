@@ -14,5 +14,11 @@ This repository contains **AMR-Radar full automation** pipeline for:
 
 ```bash
 git clone https://github.com/<your_username>/AMR-Radar.git
+
+
+**## Create enviornment**
+conda env create -f environment.yml
+conda activate amr-radar
+
 cd AMR-Radar
 chmod +x run_full_amr_radar_pipeline.sh
