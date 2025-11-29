@@ -1,0 +1,93 @@
+name: amr-radar
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+
+dependencies:
+  # ---------- Essential ----------
+  - python >=3.8,<3.11
+  - pip
+  - git
+  - wget
+  - curl
+
+  # ---------- Kraken2 ----------
+  - kraken2 >=2.1.3
+  - bracken
+
+  # ---------- FASTQ/Assembly Handling ----------
+  - fastqc
+  - multiqc
+  - seqtk
+  - spades
+  - prokka
+  - quast
+  - bwa
+  - samtools
+  - bcftools
+  - fastp
+  - bowtie2
+  - blast
+  - emboss
+
+  # ---------- Pangenome ----------
+  - roary
+  - panaroo
+  
+  # ---------- AMR Tools ----------
+  - amrfinderplus
+  - ariba
+  - abricate
+  - rgi
+
+  # ---------- Comparative Genomics ----------
+  - fastani
+  - mashtree
+  - mummer
+
+  # ---------- Statistics / Bioinformatics python libraries ----------
+  - numpy
+  - scipy
+  - pandas
+  - matplotlib
+  - seaborn
+  - biopython
+  - scikit-learn
+  - dendropy
+  - pysam
+  - statsmodels
+  - networkx
+  - xlrd
+  - openpyxl
+
+  # ---------- visualization ----------
+  - plotly
+  - graphviz
+
+  # ---------- Web/HTML Reports ----------
+  - jinja2
+  - flask
+  - tabulate
+
+  # ---------- R Dependencies ----------
+  - r-base
+  - r-dplyr
+  - r-ggplot2
+  - r-reshape2
+  - r-optparse
+  - r-tidyr
+  - r-readxl
+
+  # ---------- Extra utilities ----------
+  - tree
+  - parallel
+  - perl
+  - perl-app-cpanminus
+  - perl-linux-meminfo
+
+  # ---------- Pip-installed tools ----------
+  - pip:
+      - pyaml
+      - tqdm
+      - viridis
