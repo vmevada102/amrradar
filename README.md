@@ -13,7 +13,7 @@ This repository contains **AMR-Radar full automation** pipeline for:
 ## 🚀 Install & Download from GitHub
 
 ```bash
-git clone https://github.com/vmevada102/AMR-Radar.git
+git clone https://github.com/vmevada102/amrradar.git
 
 
 **## Create enviornment**
