@@ -1,4 +1,4 @@
-name: resistome1
+name: amr_radar
 channels:
   - defaults
   - bioconda
