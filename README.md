@@ -68,7 +68,7 @@ Ensure your conda environment is active, then execute the master script:
 
 ```bash
 ./run_complete_pipeline.sh
-
+ ```
 ### 3. Configuration Prompts
 The script will interactively ask for the following inputs:
 1.  **Input Directory:** Path to your raw FASTQ folder.
