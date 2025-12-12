@@ -84,6 +84,12 @@ The script will interactively ask for the following inputs:
 
 The pipeline is divided into three major phases:
 
+
+
+![Project Screenshot](https://github.com/vmevada102/amrradar/blob/1bfb6d9e025261fd7379cdc1632066a0c1b1aa1e/Pipeline_flowchart.png)
+
+
+
 ### 🔹 Phase 1: Identification & Extraction
 * **Kraken2 Classification:** Taxonomically classifies raw reads.
 * **Extraction:** Extracts reads belonging to the **Target Organism** using `extract_kraken2_by_name_auto_fastq.sh`.
