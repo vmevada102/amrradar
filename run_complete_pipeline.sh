@@ -62,12 +62,12 @@ done
 
 echo "========================================================"
 echo "?? STARTING PIPELINE"
-echo "   • Input Reads:  $READS_DIR"
-echo "   • Mapping CSV:  $MAP_FILE"
-echo "   • Target Org:   $TARGET_ORGANISM"
-echo "   • Accession:    $ACCESSION_NUM"
-echo "   • Threads:      $AUTO_THREADS"
-echo "   • Parallelism:  $PARALLEL_SAMPLES"
+echo "   â€¢ Input Reads:  $READS_DIR"
+echo "   â€¢ Mapping CSV:  $MAP_FILE"
+echo "   â€¢ Target Org:   $TARGET_ORGANISM"
+echo "   â€¢ Accession:    $ACCESSION_NUM"
+echo "   â€¢ Threads:      $AUTO_THREADS"
+echo "   â€¢ Parallelism:  $PARALLEL_SAMPLES"
 echo "========================================================"
 
 # --- ENSURE EXECUTABLES ---
@@ -217,7 +217,7 @@ echo ">> [Step 14] Running Pangenome Analysis..."
 # Step 16: Mapping and SNP Detection
 echo ">> [Step 16] Running Bacterial Mapping & SNP Detection..."
 # Uses results/sequence.fasta (downloaded in Step 15) by default
-./run_bacterial_mapping.sh -resume
+./run_bacterial_mapping.sh
 
 # Step 17: MLST
 echo ">> [Step 17] Running MLST Typing..."
