@@ -68,6 +68,9 @@ Ensure your conda environment is active, then execute the master script:
 
 ```bash
 ./run_complete_pipeline.sh
+
+For resuming partial process use following 
+./run_complete_pipeline.sh -resume
  ```
 ### 3. Configuration Prompts
 The script will interactively ask for the following inputs:
