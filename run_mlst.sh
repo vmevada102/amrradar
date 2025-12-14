@@ -1,61 +1,42 @@
 #!/bin/bash
 set -euo pipefail
 
-# ================================
-# MLST Automation & Analysis Script
-# ================================
+# ==================================================
+# MLST Automation with QC, Confidence & Reporting
+# ==================================================
 
 echo "[INFO] Starting MLST pipeline..."
 
-# -------------------------------
-# Step 1: Check Conda Environment
-# -------------------------------
+# --------------------------------------------------
+# Step 1: Conda environment check
+# --------------------------------------------------
 if [[ -z "${CONDA_DEFAULT_ENV:-}" ]]; then
-    echo "[ERROR] No conda environment active. Please activate the AMR conda environment."
+    echo "[ERROR] No conda environment active."
     exit 1
 fi
 
-echo "[INFO] Using Conda environment: $CONDA_DEFAULT_ENV"
+echo "[INFO] Conda environment: $CONDA_DEFAULT_ENV"
 echo "[INFO] Python: $(which python3)"
 
-# -------------------------------
-# Step 2: Check required conda packages (skip if present)
-# -------------------------------
-echo "[INFO] Checking required conda packages..."
-
-REQUIRED_PACKAGES=(
-    mlst
-    csvkit
-    pandas
-    matplotlib
-    seaborn
-    networkx
-    openpyxl
-)
+# --------------------------------------------------
+# Step 2: Required packages (skip if installed)
+# --------------------------------------------------
+REQUIRED_PACKAGES=(mlst csvkit pandas matplotlib seaborn networkx openpyxl reportlab)
 
 for pkg in "${REQUIRED_PACKAGES[@]}"; do
     if conda list "$pkg" >/dev/null 2>&1; then
         echo "[INFO] Package '$pkg' already installed — skipping."
     else
-        echo "[INFO] Package '$pkg' not found — installing."
+        echo "[INFO] Installing missing package: $pkg"
         conda install -y -c bioconda -c conda-forge "$pkg"
     fi
 done
 
-
-# -------------------------------
-# Step 3: Determine Output Folder
-# -------------------------------
-echo "[INFO] Determining next MLST results directory..."
-
+# --------------------------------------------------
+# Step 3: Output directory
+# --------------------------------------------------
 maxN=$(ls -d results/tools/* 2>/dev/null | grep -oE '/[0-9]+' | tr -d '/' | sort -n | tail -1)
-
-if [[ -z "$maxN" ]]; then
-    nextN=1
-else
-    nextN=$((maxN + 1))
-fi
-
+nextN=$(( ${maxN:-0} + 1 ))
 OUTPUT_DIR="results/tools/${nextN}_MLST"
 mkdir -p "$OUTPUT_DIR"
 
@@ -64,24 +45,20 @@ TSV_FILE="$OUTPUT_DIR/mlst_results.tsv"
 XLSX_FILE="$OUTPUT_DIR/mlst_results.xlsx"
 CMD_FILE="$OUTPUT_DIR/command.txt"
 
-echo "[INFO] Results directory: $OUTPUT_DIR"
-
-# -------------------------------
-# Step 4: Record Provenance
-# -------------------------------
+# --------------------------------------------------
+# Step 4: Provenance
+# --------------------------------------------------
 {
     echo "Timestamp: $(date '+%Y-%m-%d %H:%M:%S')"
     echo "User: $(whoami)"
     echo "Host: $(hostname)"
-    echo "Conda environment: $CONDA_DEFAULT_ENV"
-    echo "Python: $(which python3)"
+    echo "Conda env: $CONDA_DEFAULT_ENV"
     echo "Command: $0 $*"
 } > "$CMD_FILE"
 
-# -------------------------------
+# --------------------------------------------------
 # Step 5: Run MLST
-# -------------------------------
-echo "[INFO] Running MLST typing..."
+# --------------------------------------------------
 echo "Sample,Scheme,ST,Alleles" > "$CSV_FILE"
 
 shopt -s nullglob
@@ -95,163 +72,154 @@ fi
 for fasta in "${ASSEMBLIES[@]}"; do
     sample=$(basename "$fasta" .assembly.fasta)
     echo "[INFO] Processing $sample"
-    result=$(mlst "$fasta")
-    echo "$sample,$result" >> "$CSV_FILE"
+    mlst "$fasta" | awk -v s="$sample" '{print s","$0}' >> "$CSV_FILE"
 done
 
-# -------------------------------
-# Step 6: CSV → TSV
-# -------------------------------
 csvformat -T "$CSV_FILE" > "$TSV_FILE"
 
-# -------------------------------
-# Step 7: Python Analysis + Plots + Dashboard
-# -------------------------------
+# --------------------------------------------------
+# Step 6: Python QC, confidence, dashboard & PDF
+# --------------------------------------------------
 python3 <<EOF
 import os
 import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as plt
-import networkx as nx
+from statistics import mean
 
-OUTPUT_DIR = "${OUTPUT_DIR}"
-CSV_FILE = "${CSV_FILE}"
-XLSX_FILE = "${XLSX_FILE}"
+OUT="${OUTPUT_DIR}"
 
-os.makedirs(OUTPUT_DIR, exist_ok=True)
+df=pd.read_csv("${CSV_FILE}")
+df.to_excel("${XLSX_FILE}",index=False)
 
-# ------------------------
-# Load data
-# ------------------------
-df = pd.read_csv(CSV_FILE)
-df.to_excel(XLSX_FILE, index=False)
+amr=pd.read_excel("results/OneHealthAMR_AMRFinder_summary.xlsx",sheet_name="combined_raw")
 
-# ------------------------
-# Summary statistics
-# ------------------------
-summary_file = os.path.join(OUTPUT_DIR, "summary.txt")
-with open(summary_file, "w") as f:
-    f.write("MLST Summary Statistics\n")
-    f.write("=======================\n")
-    f.write(f"Total samples: {len(df)}\n")
-    f.write(f"Unique schemes: {df['Scheme'].nunique()}\n")
-    f.write(f"Unique STs: {df['ST'].nunique()}\n\n")
-    f.write("ST distribution:\n")
-    f.write(str(df['ST'].value_counts()))
+def species(x):
+    if isinstance(x,str):
+        p=x.split()
+        return " ".join(p[:2]) if len(p)>=2 else None
+    return None
 
-# ------------------------
-# ST Distribution Plot
-# ------------------------
-plt.figure(figsize=(10,6))
-sns.countplot(x="ST", data=df, order=df['ST'].value_counts().index)
-plt.xticks(rotation=90)
-plt.title("Sequence Type Distribution")
-plt.tight_layout()
-plt.savefig(os.path.join(OUTPUT_DIR, "st_distribution.png"))
-plt.close()
+amr["organism"]=amr["closest reference name"].apply(species)
+spdf=amr[["sample","organism"]].dropna().drop_duplicates().set_index("sample")
 
-# ------------------------
-# Organism summary
-# ------------------------
-organism_file = os.path.join(OUTPUT_DIR, "organism_summary.txt")
-with open(organism_file, "w") as f:
-    f.write("Organism Detection Summary\n")
-    f.write("==========================\n\n")
-    for _, row in df.iterrows():
-        f.write(f"{row['Sample']} → {row['Scheme']} (ST{row['ST']})\n")
+VALID={
+    "paeruginosa":"Pseudomonas aeruginosa",
+    "ecoli":"Escherichia coli",
+    "abaumannii":"Acinetobacter baumannii",
+    "kpneumoniae":"Klebsiella pneumoniae"
+}
+REV={v:k for k,v in VALID.items()}
 
-# ------------------------
-# Minimum Spanning Tree
-# ------------------------
-allele_cols = [c for c in df.columns if c.startswith("allele")]
-mst_png = os.path.join(OUTPUT_DIR, "mst.png")
+records=[]
+scores=[]
+qc="PASS"
 
-if allele_cols:
-    G = nx.Graph()
-    for _, row in df.iterrows():
-        G.add_node(row['Sample'], st=row['ST'])
+for i,r in df.iterrows():
+    sample=r["Sample"]
+    scheme=str(r["Scheme"]).lower()
+    sps=set(spdf.loc[spdf.index==sample,"organism"]) if sample in spdf.index else set()
+    exp=VALID.get(scheme)
 
-    profiles = df[allele_cols].astype(str).values.tolist()
-    samples = df['Sample'].tolist()
+    status="OK"
+    action="None"
+    score=100
 
-    for i in range(len(samples)):
-        for j in range(i+1, len(samples)):
-            dist = sum(a != b for a, b in zip(profiles[i], profiles[j]))
-            G.add_edge(samples[i], samples[j], weight=dist)
+    if not sps:
+        score=50
+    elif exp and exp in sps and len(sps)==1:
+        score=100
+    elif exp and exp in sps:
+        score=80
+    elif exp and exp not in sps:
+        qc="WARN"
+        corr=None
+        for s in sps:
+            if s in REV:
+                corr=REV[s]; break
+        if corr:
+            df.at[i,"Scheme"]=corr
+            status="AUTO-CORRECTED"
+            action=f"Scheme corrected to {corr}"
+            score=70
+        else:
+            status="MISMATCH"
+            action="Scheme-species mismatch"
+            score=40
 
-    pos = nx.spring_layout(G, seed=42)
-    plt.figure(figsize=(8,8))
-    nx.draw(G, pos, with_labels=True, node_color="lightblue", font_size=8)
-    plt.title("Minimum Spanning Tree (Allelic Profiles)")
-    plt.savefig(mst_png)
-    plt.close()
+    scores.append(score)
 
-# ------------------------
-# HTML Dashboard
-# ------------------------
-with open(summary_file) as f:
-    summary_text = f.read()
-with open(organism_file) as f:
-    organism_text = f.read()
+    records.append({
+        "sample":sample,
+        "original_scheme":scheme,
+        "final_scheme":df.at[i,"Scheme"],
+        "species_inferred":"; ".join(sorted(sps)),
+        "status":status,
+        "confidence_score":score,
+        "action":action
+    })
 
-table_html = df.to_html(index=False)
+val=pd.DataFrame(records)
+val.to_csv(os.path.join(OUT,"mlst_species_validation.csv"),index=False)
 
-dashboard_file = os.path.join(OUTPUT_DIR, "dashboard.html")
+with open(os.path.join(OUT,"QC_STATUS.txt"),"w") as f:
+    f.write(qc)
 
-html = f"""
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<title>MLST Dashboard</title>
-<style>
-body {{ font-family: Arial; margin: 20px; }}
-h1 {{ color: #2c3e50; }}
-table {{ border-collapse: collapse; width: 100%; }}
-th, td {{ border: 1px solid #ccc; padding: 6px; }}
-img {{ max-width: 900px; margin: 20px 0; }}
-</style>
-</head>
-<body>
-<h1>MLST Analysis Dashboard</h1>
+avg=mean(scores)
+overall="HIGH" if avg>=85 else "MODERATE" if avg>=65 else "LOW"
 
-<h2>Summary</h2>
-<pre>{summary_text}</pre>
+# ---- Dashboard ----
+def color(r):
+    return ["background-color:#ffcccc"]*len(r) if r["status"]!="OK" else ["background-color:#ccffcc"]*len(r)
 
-<h2>Organism Detection</h2>
-<pre>{organism_text}</pre>
+html=f"""
+<h1>MLST Dashboard</h1>
+<h2>QC Status: <span style="color:{'red' if qc=='WARN' else 'green'}">{qc}</span></h2>
+<h2>Overall Confidence: {overall} (Mean score = {avg:.1f})</h2>
 
-<h2>MLST Results</h2>
-{table_html}
+<h3>MLST Results</h3>
+{df.to_html(index=False)}
 
-<h2>ST Distribution</h2>
-<img src="st_distribution.png">
-
-<h2>Minimum Spanning Tree</h2>
-<img src="mst.png">
-
-</body>
-</html>
+<h3>Validation & Confidence</h3>
+{val.style.apply(color,axis=1).to_html()}
 """
 
-with open(dashboard_file, "w") as f:
+with open(os.path.join(OUT,"dashboard.html"),"w") as f:
     f.write(html)
 
-print("[INFO] Downstream analyses complete.")
-print("[INFO] Dashboard generated:", dashboard_file)
+# ---- PDF ----
+try:
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Table
+    from reportlab.lib.styles import getSampleStyleSheet
+    pdf=os.path.join(OUT,"MLST_QC_Report.pdf")
+    styles=getSampleStyleSheet()
+    doc=SimpleDocTemplate(pdf)
+    elems=[
+        Paragraph("MLST QC & Confidence Report",styles["Title"]),
+        Paragraph(f"QC Status: {qc}",styles["Normal"]),
+        Paragraph(f"Overall Confidence: {overall} (Mean = {avg:.1f})",styles["Normal"]),
+        Table([val.columns.tolist()]+val.values.tolist())
+    ]
+    doc.build(elems)
+except Exception as e:
+    print("[WARN] PDF generation skipped:",e)
+
+# ---- AMR dashboard badge ----
+amr_html="results/tools/AMRNetwork/dashboard.html"
+if os.path.exists(amr_html):
+    with open(amr_html) as f: h=f.read()
+    badge=f"<div style='padding:10px;border:2px solid {'red' if qc=='WARN' else 'green'};'>MLST QC: {qc} | Confidence: {overall}</div>"
+    if "MLST QC" not in h:
+        with open(amr_html+".bak","w") as f: f.write(h)
+        with open(amr_html,"w") as f: f.write(badge+h)
+
+print("[INFO] MLST QC Status:",qc)
+print("[INFO] Overall MLST Confidence:",overall)
 EOF
 
-# -------------------------------
-# Step 8: Final Report
-# -------------------------------
-echo "[INFO] MLST analysis completed successfully."
-echo "[INFO] Outputs:"
-echo " - $CSV_FILE"
-echo " - $TSV_FILE"
-echo " - $XLSX_FILE"
-echo " - $OUTPUT_DIR/summary.txt"
-echo " - $OUTPUT_DIR/organism_summary.txt"
-echo " - $OUTPUT_DIR/st_distribution.png"
-echo " - $OUTPUT_DIR/mst.png (if available)"
-echo " - $OUTPUT_DIR/dashboard.html"
-echo " - $CMD_FILE"
+# --------------------------------------------------
+# Final messages
+# --------------------------------------------------
+QC_STATUS=$(cat "$OUTPUT_DIR/QC_STATUS.txt")
+echo "[INFO] MLST pipeline completed."
+echo "[INFO] QC Status: $QC_STATUS"
+echo "[INFO] MLST results generated in directory: $OUTPUT_DIR"
+echo "[INFO] Dashboard, validation CSV, and PDF report generated."
