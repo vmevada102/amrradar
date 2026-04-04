@@ -106,7 +106,7 @@ if ! check_done "phase1_kraken"; then
         --mode reads \
         --reads_dir "$READS_DIR" \
         --threads "$AUTO_THREADS" \
-        --parallel 1 \
+        --parallel "$PARALLEL_SAMPLES" \
         --min_percent 0.1 \
         --percent_of total \
         --sample_tsv "$SAMPLE_TSV_NAME"
