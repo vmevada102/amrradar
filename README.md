@@ -61,7 +61,7 @@ The pipeline is controlled by a single master script: `run_complete_pipeline.sh`
 
 ### 1. Prepare Input Data
 * **Raw Reads:** Place your paired-end FASTQ files (e.g., `Sample_R1.fastq.gz`, `Sample_R2.fastq.gz`) in a directory (e.g., `raw_data/`).
-* **Mapping File (CSV):** Prepare a CSV file **(keep the name of file as sample_group.mapping.csv)** linking samples to metadata groups (Format: `SampleName,Group`).
+* **Mapping File (CSV):** Prepare a CSV file **(keep the name of file as sample_group.mapping.csv)** linking samples to metadata groups (Format: `sample,group`).
 
 ### 2. Run the Pipeline
 Ensure your conda environment is active, then execute the master script:
