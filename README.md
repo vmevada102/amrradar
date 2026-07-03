@@ -2,7 +2,7 @@
 
 **Author:** Dr. Vishal Mevada  
 **Repository:** https://github.com/vmevada102/amrradar.git  
-**Version:** 1.0.0
+**Version:** 0.0.2
 
 ## 📋 Overview
 
