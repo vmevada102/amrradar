@@ -61,6 +61,7 @@ The pipeline is controlled by a single master script: `run_complete_pipeline.sh`
 
 ### 1. Prepare Input Data
 * **Raw Reads:** Place your paired-end FASTQ files (e.g., `Sample_R1.fastq.gz`, `Sample_R2.fastq.gz`) in a directory (e.g., `raw_data/`).
+* **Support to Single End:** THe version 0.0.2 support the single end files, Keep the Sample.fastq.gz formarinto the same directory whereyou keeping raw_data/ directory.
 * **Mapping File (CSV):** Prepare a CSV file **(keep the name of file as sample_group.mapping.csv)** linking samples to metadata groups (Format: `sample,group`).
 
 ### 2. Run the Pipeline
