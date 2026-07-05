@@ -3,7 +3,7 @@
 **Author:** Dr. Vishal Mevada  
 **Repository:** https://github.com/vmevada102/amrradar.git  
 **Version:** 0.0.2
-
+# Note: Compelte functional 05-07-2026
 ## 📋 Overview
 
 The **One Health AMR Radar Pipeline** is a fully automated, end-to-end bioinformatics workflow designed for the comprehensive surveillance and analysis of Antimicrobial Resistance (AMR) from high-throughput sequencing data.
